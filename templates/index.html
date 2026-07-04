@@ -208,7 +208,7 @@
         color: white;
       }
 
-      .theme-toggle {
+      .icon-toggle {
         flex-shrink: 0;
         width: 34px;
         height: 34px;
@@ -222,21 +222,28 @@
         cursor: pointer;
         transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease, transform 0.18s ease;
       }
-      .theme-toggle:hover {
+      .icon-toggle:hover {
         border-color: var(--tab-hover-border);
         transform: translateY(-1px);
       }
-      .theme-toggle svg {
+      .icon-toggle svg {
         width: 16px;
         height: 16px;
       }
-      .theme-toggle .icon-sun {
+      .icon-toggle .icon-sun,
+      .icon-toggle .icon-sonido-off {
         display: none;
       }
-      :root[data-theme="dark"] .theme-toggle .icon-moon {
+      :root[data-theme="dark"] #theme-toggle .icon-moon {
         display: none;
       }
-      :root[data-theme="dark"] .theme-toggle .icon-sun {
+      :root[data-theme="dark"] #theme-toggle .icon-sun {
+        display: block;
+      }
+      #sound-toggle.silenciado .icon-sonido-on {
+        display: none;
+      }
+      #sound-toggle.silenciado .icon-sonido-off {
         display: block;
       }
 
@@ -622,7 +629,11 @@
               </a>
             {% endfor %}
           </nav>
-          <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Cambiar a modo noche" title="Cambiar a modo noche">
+          <button type="button" id="sound-toggle" class="icon-toggle" aria-label="Silenciar sonido" title="Silenciar sonido">
+            <svg class="icon-sonido-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg>
+            <svg class="icon-sonido-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9l5 5M22 9l-5 5"/></svg>
+          </button>
+          <button type="button" id="theme-toggle" class="icon-toggle" aria-label="Cambiar a modo noche" title="Cambiar a modo noche">
             <svg class="icon-moon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.7 15.6A9 9 0 1 1 8.4 3.3a7 7 0 0 0 12.3 12.3z"/></svg>
             <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
           </button>
@@ -723,27 +734,21 @@
       if (localStorage.getItem('tema') === 'dark') {
         root.setAttribute('data-theme', 'dark');
       }
-      themeToggle.addEventListener('click', () => {
-        const esOscuro = root.getAttribute('data-theme') === 'dark';
-        if (esOscuro) {
-          root.removeAttribute('data-theme');
-          localStorage.setItem('tema', 'light');
-        } else {
-          root.setAttribute('data-theme', 'dark');
-          localStorage.setItem('tema', 'dark');
-        }
-      });
 
-      const pasos = {{ pasos_json|safe }};
+      /* ============ Motor de sonido ============ */
+      const soundToggle = document.getElementById('sound-toggle');
       const synth = new Tone.Synth({
         oscillator: { type: 'triangle' },
         envelope: { attack: 0.01, decay: 0.1, sustain: 0.2, release: 0.3 }
       }).toDestination();
+      synth.volume.value = -8;
       const clickSynth = new Tone.MembraneSynth({
         pitchDecay: 0.008,
         octaves: 3,
         envelope: { attack: 0.001, decay: 0.2, sustain: 0.01, release: 0.1 }
       }).toDestination();
+      clickSynth.volume.value = -10;
+
       let soundReady = false;
       async function ensureSound() {
         if (!soundReady) {
@@ -751,23 +756,97 @@
           soundReady = true;
         }
       }
-      async function playClick() {
+
+      let silenciado = localStorage.getItem('sonido') === 'muted';
+      function aplicarSilencio() {
+        Tone.getDestination().mute = silenciado;
+        soundToggle.classList.toggle('silenciado', silenciado);
+        soundToggle.setAttribute('aria-label', silenciado ? 'Activar sonido' : 'Silenciar sonido');
+        soundToggle.title = silenciado ? 'Activar sonido' : 'Silenciar sonido';
+      }
+      aplicarSilencio();
+
+      soundToggle.addEventListener('click', async () => {
+        silenciado = !silenciado;
+        localStorage.setItem('sonido', silenciado ? 'muted' : 'unmuted');
+        aplicarSilencio();
+        if (!silenciado) {
+          await ensureSound();
+          clickSynth.triggerAttackRelease('C4', '32n');
+        }
+      });
+
+      /* Clic neutro para navegación (tabs, guardar) */
+      async function playClickUI() {
+        await ensureSound();
+        clickSynth.triggerAttackRelease('C3', '32n');
+      }
+      /* Confirmación al guardar la matriz */
+      async function playGuardar() {
+        await ensureSound();
+        synth.triggerAttackRelease('C5', '32n');
+        synth.triggerAttackRelease('E5', '16n', '+0.09');
+      }
+      /* Tecleo suave al editar una celda */
+      async function playTecla() {
+        await ensureSound();
+        clickSynth.triggerAttackRelease('A2', '32n');
+      }
+      /* Cambiar tema: mas grave al oscurecer, mas agudo al aclarar */
+      async function playTema(esOscuro) {
+        await ensureSound();
+        clickSynth.triggerAttackRelease(esOscuro ? 'G2' : 'G4', '16n');
+      }
+      /* Avanzar un paso: el tono depende de si la casilla cuenta o no */
+      async function playPaso(paso, opcion) {
+        await ensureSound();
+        if (paso.se_toma_en_cuenta) {
+          synth.triggerAttackRelease('E5', '16n');
+        } else if (opcion === 1) {
+          synth.triggerAttackRelease('A3', '16n');
+        } else {
+          synth.triggerAttackRelease('C4', '32n');
+        }
+      }
+      /* Retroceder un paso: blip descendente para distinguir la direccion */
+      async function playRetroceso() {
+        await ensureSound();
+        synth.triggerAttackRelease('B3', '16n');
+      }
+      async function playIniciar() {
         await ensureSound();
         clickSynth.triggerAttackRelease('C2', '16n');
+        synth.triggerAttackRelease('C5', '32n', '+0.03');
       }
-      async function playStep() {
+      async function playPausar() {
         await ensureSound();
-        synth.triggerAttackRelease('E5', '8n');
+        synth.triggerAttackRelease('A4', '16n');
       }
       async function playComplete() {
         await ensureSound();
-        synth.triggerAttackRelease('G4', '16n');
-        synth.triggerAttackRelease('C5', '16n', '+0.1');
+        synth.triggerAttackRelease('C5', '16n');
+        synth.triggerAttackRelease('E5', '16n', '+0.09');
+        synth.triggerAttackRelease('G5', '8n', '+0.18');
       }
       async function playReset() {
         await ensureSound();
         clickSynth.triggerAttackRelease('G2', '16n');
       }
+
+      themeToggle.addEventListener('click', async () => {
+        const esOscuro = root.getAttribute('data-theme') === 'dark';
+        const nuevoOscuro = !esOscuro;
+        if (nuevoOscuro) {
+          root.setAttribute('data-theme', 'dark');
+          localStorage.setItem('tema', 'dark');
+        } else {
+          root.removeAttribute('data-theme');
+          localStorage.setItem('tema', 'light');
+        }
+        playTema(nuevoOscuro);
+      });
+
+      const pasos = {{ pasos_json|safe }};
       const totalPasos = pasos.length;
       let pasoActual = {{ paso }};
       let reproduciendo = false;
@@ -799,6 +878,11 @@
         if (pasoActual < totalPasos - 1) {
           pasoActual += 1;
           renderizar();
+          if (pasoActual === totalPasos - 1) {
+            playComplete();
+          } else {
+            playPaso(pasos[pasoActual], {{ opcion }});
+          }
         } else {
           detener();
         }
@@ -808,6 +892,7 @@
         if (pasoActual > -1) {
           pasoActual -= 1;
           renderizar();
+          playRetroceso();
         }
       }
 
@@ -952,9 +1037,43 @@
       });
 
       document.getElementById('btn-reproducir').addEventListener('click', async () => {
-        await playClick();
+        if (reproduciendo) {
+          await playPausar();
+        } else {
+          await playIniciar();
+        }
         alternarReproduccion();
       });
+
+      /* Sonido al cambiar de opcion, con una pequeña pausa para que se escuche antes de navegar */
+      document.querySelectorAll('.tabs .tab').forEach((tab) => {
+        tab.addEventListener('click', (evento) => {
+          evento.preventDefault();
+          const destino = tab.href;
+          playClickUI();
+          setTimeout(() => {
+            window.location.href = destino;
+          }, 110);
+        });
+      });
+
+      /* Sonido al guardar la matriz */
+      const formMatriz = document.querySelector('.editor-matriz').closest('form');
+      formMatriz.addEventListener('submit', (evento) => {
+        evento.preventDefault();
+        playGuardar();
+        setTimeout(() => {
+          formMatriz.submit();
+        }, 130);
+      });
+
+      /* Sonido suave al editar una celda de la matriz */
+      document.querySelectorAll('.editor-matriz input').forEach((input) => {
+        input.addEventListener('change', () => {
+          playTecla();
+        });
+      });
+
       renderizar();
     </script>
   </body>
