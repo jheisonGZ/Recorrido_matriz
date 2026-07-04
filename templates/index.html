@@ -5,253 +5,576 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Visualizador de tabla</title>
     <style>
+      *, *::before, *::after {
+        box-sizing: border-box;
+      }
       html, body {
         height: 100%;
         margin: 0;
         padding: 0;
-        background: #f5f6f8;
+        background: #e9edf6;
         overflow: hidden;
       }
       body {
         display: flex;
         justify-content: center;
         align-items: center;
-        font-family: Arial, sans-serif;
-        color: #242530;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Arial, sans-serif;
+        color: #1c2333;
       }
-      .contenedor {
-        width: min(1180px, 100%);
-        height: min(calc(100vh - 24px), 940px);
-        margin: 12px;
-        background: white;
-        border-radius: 20px;
-        padding: 18px;
-        box-shadow: 0 20px 45px rgba(0,0,0,0.08);
+
+      .app-shell {
+        width: min(1240px, 100vw);
+        height: min(100dvh, 940px);
+        margin: 10px;
+        background: linear-gradient(165deg, #ffffff 0%, #f4f6fb 60%, #eef1fb 100%);
+        border-radius: 26px;
+        padding: clamp(14px, 2vw, 26px);
+        box-shadow: 0 30px 70px rgba(28, 35, 51, 0.16), 0 2px 6px rgba(28, 35, 51, 0.06);
         display: grid;
         grid-template-rows: auto 1fr;
-        gap: 18px;
+        gap: clamp(12px, 1.6vh, 20px);
+        min-height: 0;
         overflow: hidden;
       }
-      h1 { margin: 0; font-size: 1.45rem; }
-      .descripcion { margin: 8px 0 0; color: #565c75; font-size: 0.95rem; }
-      .botones-opcion {
+
+      /* ---------- Encabezado ---------- */
+      .app-header {
         display: flex;
-        gap: 10px;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 20px;
         flex-wrap: wrap;
-        margin: 12px 0 0;
       }
-      .botones-opcion a {
+      .titulo-grupo {
+        min-width: 260px;
+        max-width: 560px;
+      }
+      .etiqueta {
+        display: inline-block;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #4f5fce;
+        background: #edeffd;
+        padding: 4px 10px;
+        border-radius: 999px;
+        margin-bottom: 8px;
+      }
+      .app-header h1 {
+        margin: 0;
+        font-size: clamp(1.05rem, 1.1vw + 0.7rem, 1.5rem);
+        line-height: 1.25;
+        font-weight: 700;
+        color: #12172a;
+      }
+      .app-header .descripcion {
+        margin: 6px 0 0;
+        color: #5b6377;
+        font-size: 0.86rem;
+        line-height: 1.4;
+      }
+      .tabs {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-content: flex-start;
+        max-width: 560px;
+      }
+      .tab {
+        display: flex;
+        align-items: center;
+        gap: 8px;
         text-decoration: none;
-        color: #242530;
+        color: #37405a;
         background: #ffffff;
-        border: 1px solid #e2e4ea;
-        padding: 9px 12px;
-        border-radius: 10px;
-        font-size: 0.92rem;
+        border: 1px solid #dfe3ee;
+        padding: 8px 12px 8px 8px;
+        border-radius: 12px;
+        font-size: 0.82rem;
+        font-weight: 500;
+        line-height: 1.2;
+        transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease, transform 0.18s ease;
       }
-      .botones-opcion a.activo { background: #4f5fce; color: white; }
+      .tab:hover {
+        border-color: #b9c1f5;
+        transform: translateY(-1px);
+      }
+      .tab-num {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+        border-radius: 50%;
+        background: #eef0fb;
+        color: #4f5fce;
+        font-size: 0.72rem;
+        font-weight: 700;
+      }
+      .tab.activo {
+        background: #4f5fce;
+        color: white;
+        border-color: #4f5fce;
+      }
+      .tab.activo .tab-num {
+        background: rgba(255, 255, 255, 0.22);
+        color: white;
+      }
+
+      /* ---------- Contenido principal ---------- */
       .contenido {
         display: grid;
-        grid-template-columns: minmax(280px, 1.05fr) minmax(320px, 0.95fr);
-        gap: 18px;
+        grid-template-columns: minmax(300px, 0.86fr) minmax(360px, 1fr);
+        gap: clamp(12px, 1.4vw, 20px);
         min-height: 0;
         overflow: hidden;
       }
       .columna {
         display: flex;
         flex-direction: column;
-        gap: 14px;
+        gap: clamp(10px, 1.4vh, 16px);
         min-height: 0;
-      }
-      .tabla { border-collapse: collapse; width: 100%; }
-      .tabla td {
-        width: 38px;
-        height: 38px;
-        text-align: center;
-        font-size: 14px;
-        font-weight: bold;
-        border: 1px solid #e2e4ea;
-        background: #eef0f5;
-        padding: 0;
-      }
-      .tabla td.pasado-positivo { background: #1f9d75; color: white; }
-      .tabla td.pasado-negativo { background: #d1603a; color: white; }
-      .tabla td.actual { background: #4f5fce; color: white; }
-      .panel {
-        flex: 1;
-        min-width: 0;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
       }
       .card {
-        background: #f8f9fb;
-        border: 1px solid #e2e4ea;
-        padding: 14px;
-        border-radius: 14px;
-        margin: 0;
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid #e4e8f2;
+        border-radius: 18px;
+        padding: clamp(12px, 1.5vh, 16px);
         min-height: 0;
       }
+      .card h2 {
+        margin: 0 0 4px;
+        font-size: 0.86rem;
+        font-weight: 700;
+        color: #12172a;
+      }
+      .card .pista {
+        display: block;
+        font-size: 0.74rem;
+        color: #7a8194;
+        margin-bottom: 10px;
+      }
+
+      /* ---------- Editor de matriz ---------- */
       .editor-matriz {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 8px;
+        gap: 7px;
       }
       .editor-matriz input {
         width: 100%;
-        padding: 8px;
-        border: 1px solid #d7d9df;
+        padding: 7px 4px;
+        border: 1px solid #ccd4e3;
         border-radius: 10px;
         font-size: 13px;
         text-align: center;
+        color: #1c2333;
+        background: #fafbff;
+        font-weight: 600;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
       }
-      .codigo-traza {
-        background: #ffffff;
-        border: 1px solid #e2e4ea;
-        border-radius: 14px;
-        padding: 14px;
-        min-height: 190px;
-        overflow: hidden;
+      .editor-matriz input:focus {
+        outline: none;
+        border-color: #4f5fce;
+        box-shadow: 0 0 0 3px rgba(79, 95, 206, 0.14);
       }
-      .codigo-traza pre {
-        margin: 0;
-        font-size: 12px;
-        line-height: 1.45;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-        white-space: pre-wrap;
+      .fila-guardar {
+        display: flex;
+        justify-content: flex-end;
       }
-      .codigo-traza .linea {
-        padding: 6px 8px;
-        border-radius: 8px;
-      }
-      .codigo-traza .linea.activa {
-        background: #e5ecff;
-        border-left: 4px solid #4f5fce;
-      }
-      .codigo-traza .linea.inactivo {
-        color: #585f7a;
-      }
-      .acciones {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
-        margin-top: 0;
-      }
-      .acciones button {
-        border: 0;
-        background: #4f5fce;
-        color: white;
-        padding: 11px;
-        border-radius: 12px;
-        cursor: pointer;
-        font-size: 13px;
-      }
-      .acciones button.secundario { background: #ffffff; color: #242530; border: 1px solid #e2e4ea; }
-      .resumen { font-weight: bold; margin-top: 6px; }
-      .positivo { color: #1f9d75; }
-      .negativo { color: #d1603a; }
-      .suave { color: #6b6d7a; }
       .boton-guardar {
-        width: fit-content;
         margin-top: 10px;
-        padding: 10px 16px;
+        padding: 9px 16px;
         border: none;
         background: #4f5fce;
         color: white;
         border-radius: 12px;
         cursor: pointer;
-        font-size: 13px;
+        font-size: 12.5px;
+        font-weight: 600;
+        transition: background 0.18s ease, transform 0.18s ease;
       }
+      .boton-guardar:hover {
+        background: #3d53b6;
+        transform: translateY(-1px);
+      }
+
+      /* ---------- Tabla visual ---------- */
+      .tabla-card {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+      }
+      .tabla-card .card-encabezado {
+        width: 100%;
+      }
+      .tabla-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: 1;
+        min-height: 0;
+      }
+      .tabla {
+        border-collapse: separate;
+        border-spacing: 5px;
+        margin: 0;
+      }
+      .tabla td {
+        width: clamp(34px, 4.6vw, 46px);
+        height: clamp(34px, 4.6vw, 46px);
+        text-align: center;
+        font-size: 14px;
+        font-weight: 700;
+        border-radius: 10px;
+        border: 1px solid #e3e8f1;
+        background: #eef1f8;
+        color: #37405a;
+        padding: 0;
+        transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease;
+      }
+      .tabla td.pasado-positivo { background: #1f9d75; color: white; border-color: #1f9d75; }
+      .tabla td.pasado-negativo { background: #d1603a; color: white; border-color: #d1603a; }
+      .tabla td.pasado-neutral { background: #a7b4db; color: white; border-color: #a7b4db; }
+      .tabla td.actual { background: #4f5fce; color: white; border-color: #4f5fce; transform: scale(1.1); box-shadow: 0 6px 14px rgba(79, 95, 206, 0.35); }
+
+      .leyenda {
+        list-style: none;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 12px;
+        margin: 0;
+        padding: 0;
+        font-size: 0.74rem;
+        color: #5b6377;
+      }
+      .leyenda li {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .punto {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+      }
+      .punto.actual { background: #4f5fce; }
+      .punto.positivo { background: #1f9d75; }
+      .punto.negativo { background: #d1603a; }
+      .punto.neutral { background: #a7b4db; }
+
+      /* ---------- Columna derecha ---------- */
+      .progreso-card {
+        flex-shrink: 0;
+      }
+      .progreso-info {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 8px;
+      }
+      .progreso-info strong {
+        font-size: 0.86rem;
+        color: #12172a;
+      }
+      .resultado-chip {
+        font-size: 0.78rem;
+        color: #5b6377;
+      }
+      .resultado-chip strong {
+        color: #4f5fce;
+        font-size: 1rem;
+      }
+      .barra-progreso {
+        width: 100%;
+        height: 8px;
+        border-radius: 999px;
+        background: #e7eaf3;
+        overflow: hidden;
+      }
+      .barra-relleno {
+        height: 100%;
+        background: linear-gradient(90deg, #4f5fce, #7d8cf0);
+        border-radius: 999px;
+        transition: width 0.25s ease;
+      }
+
+      .detalle-card {
+        flex: 1.1;
+        min-height: 0;
+        overflow: auto;
+      }
+      #detalle-paso strong {
+        display: block;
+        font-size: 0.92rem;
+        color: #12172a;
+        margin-bottom: 4px;
+      }
+      #detalle-paso p {
+        margin: 4px 0;
+        font-size: 0.86rem;
+        color: #3c4256;
+        line-height: 1.45;
+      }
+      .resumen {
+        font-weight: 700;
+        margin-top: 8px !important;
+      }
+      .positivo { color: #1f9d75; }
+      .negativo { color: #d1603a; }
+      .suave { color: #6b6d7a; }
+
+      .codigo-card {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+      .codigo-card pre {
+        margin: 0;
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+        font-size: 12px;
+        line-height: 1.5;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        white-space: pre-wrap;
+      }
+      .codigo-card .linea {
+        padding: 6px 10px;
+        border-radius: 8px;
+      }
+      .codigo-card .linea.activa {
+        background: #e5ecff;
+        border-left: 3px solid #4f5fce;
+        color: #12172a;
+      }
+      .codigo-card .linea.inactivo {
+        color: #8991a6;
+      }
+
+      /* ---------- Controles ---------- */
+      .acciones {
+        flex-shrink: 0;
+        display: flex;
+        gap: 8px;
+      }
+      .acciones button {
+        border: 0;
+        background: #f3f4fb;
+        color: #37405a;
+        border: 1px solid #dfe3ee;
+        padding: 10px 14px;
+        border-radius: 12px;
+        cursor: pointer;
+        font-size: 12.5px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        white-space: nowrap;
+        transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+      }
+      .acciones button:hover {
+        transform: translateY(-1px);
+        border-color: #b9c1f5;
+      }
+      #btn-reproducir {
+        flex: 1;
+        background: #4f5fce;
+        color: white;
+        border-color: #4f5fce;
+      }
+      #btn-reproducir:hover {
+        background: #3d53b6;
+        border-color: #3d53b6;
+      }
+
       @media (max-width: 980px) {
-        .contenedor { height: auto; max-height: calc(100vh - 24px); }
-        .contenido { grid-template-columns: 1fr; overflow: auto; }
-        .acciones { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        html, body {
+          overflow: auto;
+        }
+        .app-shell {
+          height: auto;
+          min-height: 100dvh;
+        }
+        .contenido {
+          grid-template-columns: 1fr;
+        }
+        .detalle-card, .codigo-card {
+          overflow: visible;
+        }
       }
-      @media (max-width: 640px) {
-        .contenedor { padding: 12px; }
-        .botones-opcion { gap: 6px; }
-        .botones-opcion a { font-size: 0.8rem; padding: 8px 10px; }
-        .tabla td { width: 28px; height: 28px; font-size: 11px; }
-        .editor-matriz input { font-size: 12px; padding: 6px; }
-        .codigo-traza { min-height: 150px; }
-        .acciones { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      @media (max-width: 560px) {
+        .app-header {
+          flex-direction: column;
+        }
+        .tabs {
+          max-width: 100%;
+        }
+        .acciones {
+          flex-wrap: wrap;
+        }
+        .acciones button {
+          flex: 1 1 40%;
+        }
+        #btn-reproducir {
+          flex-basis: 100%;
+          order: -1;
+        }
       }
     </style>
   </head>
   <body>
-    <div class="contenedor">
-      <h1>Visualizador de recorrido de una tabla de números</h1>
-      <p>Esta versión web recrea el ejemplo para poder publicarlo en Render o en un servidor en la nube.</p>
-
-      <div class="botones-opcion">
-        {% for index, texto in opciones %}
-          <a href="/?opcion={{ index }}&paso=-1" class="{% if index == opcion %}activo{% endif %}">{{ texto }}</a>
-        {% endfor %}
-      </div>
-
-      <div class="contenido">
-        <div>
-          <h3>Editar matriz</h3>
-          <form action="/update-matrix" method="post">
-            <div class="editor-matriz">
-              {% for fila in range(4) %}
-                {% for columna in range(4) %}
-                  <input type="number" name="celda-{{ fila }}-{{ columna }}" value="{{ numeros[fila][columna] }}" />
-                {% endfor %}
-              {% endfor %}
-            </div>
-            <button type="submit" style="margin-top: 16px; padding: 12px 16px; border: none; background: #4f5fce; color: white; border-radius: 10px; cursor: pointer;">Guardar matriz</button>
-          </form>
-
-          <h3 style="margin-top: 24px;">La tabla</h3>
-          <table class="tabla">
-            {% for fila in range(4) %}
-              <tr>
-                {% for columna in range(4) %}
-                  <td data-fila="{{ fila }}" data-columna="{{ columna }}" class="{{ estado_casillas.get((fila, columna), '') }}">{{ numeros[fila][columna] }}</td>
-                {% endfor %}
-              </tr>
-            {% endfor %}
-          </table>
+    <div class="app-shell">
+      <header class="app-header">
+        <div class="titulo-grupo">
+          <span class="etiqueta">Ejercicio interactivo</span>
+          <h1>Visualizador de recorrido de una tabla de números</h1>
+          <p class="descripcion">Recorre la matriz casilla por casilla y descubre cómo cada opción decide qué números contar.</p>
         </div>
 
-        <div class="panel">
+        <nav class="tabs" aria-label="Elegir opción">
+          {% for index, texto in opciones %}
+            <a href="/?opcion={{ index }}&paso=-1" class="tab {% if index == opcion %}activo{% endif %}">
+              <span class="tab-num">{{ index + 1 }}</span>{{ texto.split(': ', 1)[1] if ': ' in texto else texto }}
+            </a>
+          {% endfor %}
+        </nav>
+      </header>
+
+      <main class="contenido">
+        <section class="columna">
           <div class="card">
-            <strong>Pasos</strong>
-            <p id="paso-label">Casilla {{ paso + 1 if paso >= 0 else 0 }} de {{ pasos|length }}</p>
+            <h2>Editar matriz</h2>
+            <span class="pista">Cambia los valores y guarda para reiniciar la simulación</span>
+            <form action="/update-matrix" method="post">
+              <div class="editor-matriz">
+                {% for fila in range(4) %}
+                  {% for columna in range(4) %}
+                    <input type="number" name="celda-{{ fila }}-{{ columna }}" value="{{ numeros[fila][columna] }}" />
+                  {% endfor %}
+                {% endfor %}
+              </div>
+              <div class="fila-guardar">
+                <button type="submit" class="boton-guardar">Guardar matriz</button>
+              </div>
+            </form>
           </div>
 
-          <div class="card" id="detalle-paso">
-            {% if paso >= 0 %}
-              {% set paso_actual = pasos[paso] %}
-              <strong>Fila {{ paso_actual['fila'] }}, columna {{ paso_actual['columna'] }}</strong>
-              <p>El número es {{ paso_actual['numero'] }}.</p>
-              <p>{{ paso_actual['explicacion'] }}</p>
-              <p class="resumen {% if paso_actual['se_toma_en_cuenta'] %}positivo{% elif opcion == 1 %}negativo{% else %}suave{% endif %}">{{ paso_actual['resumen'] }}</p>
-              <p><strong>Resultado actual:</strong> {{ paso_actual['resultado'] }}</p>
-            {% else %}
-              <p>Presiona siguiente para comenzar.</p>
-            {% endif %}
+          <div class="card tabla-card">
+            <div class="card-encabezado">
+              <h2>La tabla</h2>
+            </div>
+            <div class="tabla-wrap">
+              <table class="tabla">
+                {% for fila in range(4) %}
+                  <tr>
+                    {% for columna in range(4) %}
+                      <td data-fila="{{ fila }}" data-columna="{{ columna }}" class="{{ estado_casillas.get((fila, columna), '') }}">{{ numeros[fila][columna] }}</td>
+                    {% endfor %}
+                  </tr>
+                {% endfor %}
+              </table>
+            </div>
+            <ul class="leyenda">
+              <li><span class="punto actual"></span>Casilla actual</li>
+              <li><span class="punto positivo"></span>Se cuenta</li>
+              <li><span class="punto negativo"></span>Resta / no cuenta</li>
+              <li><span class="punto neutral"></span>Ya revisada</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="columna">
+          <div class="card progreso-card">
+            <div class="progreso-info">
+              <strong id="paso-label">Casilla {{ paso + 1 if paso >= 0 else 0 }} de {{ pasos|length }}</strong>
+              <span class="resultado-chip">Resultado: <strong>{{ pasos[paso]['resultado'] if paso >= 0 else 0 }}</strong></span>
+            </div>
+            <div class="barra-progreso">
+              <div class="barra-relleno" id="barra-relleno" style="width: {{ ((paso + 1) / (pasos|length) * 100) if paso >= 0 else 0 }}%;"></div>
+            </div>
           </div>
 
-          <div class="codigo-traza">
-            <strong>Seguimiento del código</strong>
+          <div class="card detalle-card">
+            <h2>Paso actual</h2>
+            <div id="detalle-paso">
+              {% if paso >= 0 %}
+                {% set paso_actual = pasos[paso] %}
+                <strong>Fila {{ paso_actual['fila'] }}, columna {{ paso_actual['columna'] }}</strong>
+                <p>El número es {{ paso_actual['numero'] }}.</p>
+                <p>{{ paso_actual['explicacion'] }}</p>
+                <p class="resumen {% if paso_actual['se_toma_en_cuenta'] %}positivo{% elif opcion == 1 %}negativo{% else %}suave{% endif %}">{{ paso_actual['resumen'] }}</p>
+                <p><strong>Resultado actual:</strong> {{ paso_actual['resultado'] }}</p>
+              {% else %}
+                <p>Presiona siguiente para comenzar.</p>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="card codigo-card">
+            <h2>Seguimiento del código</h2>
             <pre id="codigo-traza"></pre>
           </div>
 
           <div class="acciones">
-            <button class="secundario" type="button" id="btn-anterior">Anterior</button>
+            <button class="secundario" type="button" id="btn-anterior" aria-label="Paso anterior">&larr; Anterior</button>
             <button type="button" id="btn-reproducir">Reproducir</button>
-            <button type="button" id="btn-siguiente">Siguiente</button>
-            <button class="secundario" type="button" id="btn-reiniciar">Reiniciar</button>
+            <button class="secundario" type="button" id="btn-siguiente" aria-label="Siguiente paso">Siguiente &rarr;</button>
+            <button class="secundario" type="button" id="btn-reiniciar" aria-label="Reiniciar">&#8635; Reiniciar</button>
           </div>
-        </div>
-      </div>
+        </section>
+      </main>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/tone@15.1.22/build/Tone.min.js"></script>
     <script>
       const pasos = {{ pasos_json|safe }};
+      const synth = new Tone.Synth({
+        oscillator: { type: 'triangle' },
+        envelope: { attack: 0.01, decay: 0.1, sustain: 0.2, release: 0.3 }
+      }).toDestination();
+      const clickSynth = new Tone.MembraneSynth({
+        pitchDecay: 0.008,
+        octaves: 3,
+        envelope: { attack: 0.001, decay: 0.2, sustain: 0.01, release: 0.1 }
+      }).toDestination();
+      let soundReady = false;
+      async function ensureSound() {
+        if (!soundReady) {
+          await Tone.start();
+          soundReady = true;
+        }
+      }
+      async function playClick() {
+        await ensureSound();
+        clickSynth.triggerAttackRelease('C2', '16n');
+      }
+      async function playStep() {
+        await ensureSound();
+        synth.triggerAttackRelease('E5', '8n');
+      }
+      async function playComplete() {
+        await ensureSound();
+        synth.triggerAttackRelease('G4', '16n');
+        synth.triggerAttackRelease('C5', '16n', '+0.1');
+      }
+      async function playReset() {
+        await ensureSound();
+        clickSynth.triggerAttackRelease('G2', '16n');
+      }
       const totalPasos = pasos.length;
       let pasoActual = {{ paso }};
       let reproduciendo = false;
@@ -261,51 +584,13 @@
       const pasoLabel = document.getElementById('paso-label');
       const detallePaso = document.getElementById('detalle-paso');
       const botonReproducir = document.getElementById('btn-reproducir');
+      const barraRelleno = document.getElementById('barra-relleno');
+      const resultadoChip = document.querySelector('.resultado-chip strong');
 
       function limpiarCasillas() {
         document.querySelectorAll('.tabla td').forEach((celda) => {
           celda.className = '';
         });
-      }
-
-      function renderizar() {
-        limpiarCasillas();
-
-        if (pasoActual < 0) {
-          pasoLabel.textContent = `Casilla 0 de ${totalPasos}`;
-          detallePaso.innerHTML = '<p>Presiona siguiente para comenzar.</p>';
-          botonReproducir.textContent = 'Reproducir';
-          return;
-        }
-
-        for (let indice = 0; indice < pasoActual; indice += 1) {
-          const paso = pasos[indice];
-          const celda = document.querySelector(`td[data-fila="${paso.fila}"][data-columna="${paso.columna}"]`);
-          if (!celda) continue;
-          if (paso.se_toma_en_cuenta) {
-            celda.classList.add('pasado-positivo');
-          } else if ({{ opcion }} === 1) {
-            celda.classList.add('pasado-negativo');
-          } else {
-            celda.classList.add('pasado-neutral');
-          }
-        }
-
-        const paso = pasos[pasoActual];
-        const celdaActual = document.querySelector(`td[data-fila="${paso.fila}"][data-columna="${paso.columna}"]`);
-        if (celdaActual) {
-          celdaActual.classList.add('actual');
-        }
-
-        pasoLabel.textContent = `Casilla ${pasoActual + 1} de ${totalPasos}`;
-        detallePaso.innerHTML = `
-          <strong>Fila ${paso.fila}, columna ${paso.columna}</strong>
-          <p>El número es ${paso.numero}.</p>
-          <p>${paso.explicacion}</p>
-          <p class="resumen ${paso.se_toma_en_cuenta ? 'positivo' : ({{ opcion }} === 1 ? 'negativo' : 'suave')}">${paso.resumen}</p>
-          <p><strong>Resultado actual:</strong> ${paso.resultado}</p>
-        `;
-        botonReproducir.textContent = reproduciendo ? 'Pausar' : 'Reproducir';
       }
 
       function detener() {
@@ -351,20 +636,6 @@
         renderizar();
         temporizador = setInterval(siguiente, velocidad);
       }
-
-      document.getElementById('btn-siguiente').addEventListener('click', () => {
-        if (reproduciendo) {
-          detener();
-        }
-        siguiente();
-      });
-
-      document.getElementById('btn-anterior').addEventListener('click', () => {
-        if (reproduciendo) {
-          detener();
-        }
-        anterior();
-      });
 
       const codigoTraza = document.getElementById('codigo-traza');
       const lineasCodigo = {
@@ -429,6 +700,8 @@
           pasoLabel.textContent = `Casilla 0 de ${totalPasos}`;
           detallePaso.innerHTML = '<p>Presiona siguiente para comenzar.</p>';
           botonReproducir.textContent = 'Reproducir';
+          resultadoChip.textContent = '0';
+          barraRelleno.style.width = '0%';
           renderizarCodigo();
           return;
         }
@@ -461,6 +734,8 @@
           <p><strong>Resultado actual:</strong> ${paso.resultado}</p>
         `;
         botonReproducir.textContent = reproduciendo ? 'Pausar' : 'Reproducir';
+        resultadoChip.textContent = paso.resultado;
+        barraRelleno.style.width = `${((pasoActual + 1) / totalPasos) * 100}%`;
         renderizarCodigo();
       }
 
@@ -478,11 +753,15 @@
         anterior();
       });
 
-      document.getElementById('btn-reiniciar').addEventListener('click', () => {
+      document.getElementById('btn-reiniciar').addEventListener('click', async () => {
+        await playReset();
         reiniciar();
       });
 
-      document.getElementById('btn-reproducir').addEventListener('click', alternarReproduccion);
+      document.getElementById('btn-reproducir').addEventListener('click', async () => {
+        await playClick();
+        alternarReproduccion();
+      });
       renderizar();
     </script>
   </body>
