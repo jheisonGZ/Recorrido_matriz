@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Visualizador de tabla</title>
+    <style>
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        background: #f5f6f8;
+        overflow: hidden;
+      }
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-family: Arial, sans-serif;
+        color: #242530;
+      }
+      .contenedor {
+        width: min(1180px, 100%);
+        height: min(calc(100vh - 24px), 940px);
+        margin: 12px;
+        background: white;
+        border-radius: 20px;
+        padding: 18px;
+        box-shadow: 0 20px 45px rgba(0,0,0,0.08);
+        display: grid;
+        grid-template-rows: auto 1fr;
+        gap: 18px;
+        overflow: hidden;
+      }
+      h1 { margin: 0; font-size: 1.45rem; }
+      .descripcion { margin: 8px 0 0; color: #565c75; font-size: 0.95rem; }
+      .botones-opcion {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin: 12px 0 0;
+      }
+      .botones-opcion a {
+        text-decoration: none;
+        color: #242530;
+        background: #ffffff;
+        border: 1px solid #e2e4ea;
+        padding: 9px 12px;
+        border-radius: 10px;
+        font-size: 0.92rem;
+      }
+      .botones-opcion a.activo { background: #4f5fce; color: white; }
+      .contenido {
+        display: grid;
+        grid-template-columns: minmax(280px, 1.05fr) minmax(320px, 0.95fr);
+        gap: 18px;
+        min-height: 0;
+        overflow: hidden;
+      }
+      .columna {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        min-height: 0;
+      }
+      .tabla { border-collapse: collapse; width: 100%; }
+      .tabla td {
+        width: 38px;
+        height: 38px;
+        text-align: center;
+        font-size: 14px;
+        font-weight: bold;
+        border: 1px solid #e2e4ea;
+        background: #eef0f5;
+        padding: 0;
+      }
+      .tabla td.pasado-positivo { background: #1f9d75; color: white; }
+      .tabla td.pasado-negativo { background: #d1603a; color: white; }
+      .tabla td.actual { background: #4f5fce; color: white; }
+      .panel {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .card {
+        background: #f8f9fb;
+        border: 1px solid #e2e4ea;
+        padding: 14px;
+        border-radius: 14px;
+        margin: 0;
+        min-height: 0;
+      }
+      .editor-matriz {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .editor-matriz input {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #d7d9df;
+        border-radius: 10px;
+        font-size: 13px;
+        text-align: center;
+      }
+      .codigo-traza {
+        background: #ffffff;
+        border: 1px solid #e2e4ea;
+        border-radius: 14px;
+        padding: 14px;
+        min-height: 190px;
+        overflow: hidden;
+      }
+      .codigo-traza pre {
+        margin: 0;
+        font-size: 12px;
+        line-height: 1.45;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        white-space: pre-wrap;
+      }
+      .codigo-traza .linea {
+        padding: 6px 8px;
+        border-radius: 8px;
+      }
+      .codigo-traza .linea.activa {
+        background: #e5ecff;
+        border-left: 4px solid #4f5fce;
+      }
+      .codigo-traza .linea.inactivo {
+        color: #585f7a;
+      }
+      .acciones {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 0;
+      }
+      .acciones button {
+        border: 0;
+        background: #4f5fce;
+        color: white;
+        padding: 11px;
+        border-radius: 12px;
+        cursor: pointer;
+        font-size: 13px;
+      }
+      .acciones button.secundario { background: #ffffff; color: #242530; border: 1px solid #e2e4ea; }
+      .resumen { font-weight: bold; margin-top: 6px; }
+      .positivo { color: #1f9d75; }
+      .negativo { color: #d1603a; }
+      .suave { color: #6b6d7a; }
+      .boton-guardar {
+        width: fit-content;
+        margin-top: 10px;
+        padding: 10px 16px;
+        border: none;
+        background: #4f5fce;
+        color: white;
+        border-radius: 12px;
+        cursor: pointer;
+        font-size: 13px;
+      }
+      @media (max-width: 980px) {
+        .contenedor { height: auto; max-height: calc(100vh - 24px); }
+        .contenido { grid-template-columns: 1fr; overflow: auto; }
+        .acciones { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      }
+      @media (max-width: 640px) {
+        .contenedor { padding: 12px; }
+        .botones-opcion { gap: 6px; }
+        .botones-opcion a { font-size: 0.8rem; padding: 8px 10px; }
+        .tabla td { width: 28px; height: 28px; font-size: 11px; }
+        .editor-matriz input { font-size: 12px; padding: 6px; }
+        .codigo-traza { min-height: 150px; }
+        .acciones { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="contenedor">
+      <h1>Visualizador de recorrido de una tabla de números</h1>
+      <p>Esta versión web recrea el ejemplo para poder publicarlo en Render o en un servidor en la nube.</p>
+
+      <div class="botones-opcion">
+        {% for index, texto in opciones %}
+          <a href="/?opcion={{ index }}&paso=-1" class="{% if index == opcion %}activo{% endif %}">{{ texto }}</a>
+        {% endfor %}
+      </div>
+
+      <div class="contenido">
+        <div>
+          <h3>Editar matriz</h3>
+          <form action="/update-matrix" method="post">
+            <div class="editor-matriz">
+              {% for fila in range(4) %}
+                {% for columna in range(4) %}
+                  <input type="number" name="celda-{{ fila }}-{{ columna }}" value="{{ numeros[fila][columna] }}" />
+                {% endfor %}
+              {% endfor %}
+            </div>
+            <button type="submit" style="margin-top: 16px; padding: 12px 16px; border: none; background: #4f5fce; color: white; border-radius: 10px; cursor: pointer;">Guardar matriz</button>
+          </form>
+
+          <h3 style="margin-top: 24px;">La tabla</h3>
+          <table class="tabla">
+            {% for fila in range(4) %}
+              <tr>
+                {% for columna in range(4) %}
+                  <td data-fila="{{ fila }}" data-columna="{{ columna }}" class="{{ estado_casillas.get((fila, columna), '') }}">{{ numeros[fila][columna] }}</td>
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </table>
+        </div>
+
+        <div class="panel">
+          <div class="card">
+            <strong>Pasos</strong>
+            <p id="paso-label">Casilla {{ paso + 1 if paso >= 0 else 0 }} de {{ pasos|length }}</p>
+          </div>
+
+          <div class="card" id="detalle-paso">
+            {% if paso >= 0 %}
+              {% set paso_actual = pasos[paso] %}
+              <strong>Fila {{ paso_actual['fila'] }}, columna {{ paso_actual['columna'] }}</strong>
+              <p>El número es {{ paso_actual['numero'] }}.</p>
+              <p>{{ paso_actual['explicacion'] }}</p>
+              <p class="resumen {% if paso_actual['se_toma_en_cuenta'] %}positivo{% elif opcion == 1 %}negativo{% else %}suave{% endif %}">{{ paso_actual['resumen'] }}</p>
+              <p><strong>Resultado actual:</strong> {{ paso_actual['resultado'] }}</p>
+            {% else %}
+              <p>Presiona siguiente para comenzar.</p>
+            {% endif %}
+          </div>
+
+          <div class="codigo-traza">
+            <strong>Seguimiento del código</strong>
+            <pre id="codigo-traza"></pre>
+          </div>
+
+          <div class="acciones">
+            <button class="secundario" type="button" id="btn-anterior">Anterior</button>
+            <button type="button" id="btn-reproducir">Reproducir</button>
+            <button type="button" id="btn-siguiente">Siguiente</button>
+            <button class="secundario" type="button" id="btn-reiniciar">Reiniciar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const pasos = {{ pasos_json|safe }};
+      const totalPasos = pasos.length;
+      let pasoActual = {{ paso }};
+      let reproduciendo = false;
+      let temporizador = null;
+      const velocidad = 750;
+
+      const pasoLabel = document.getElementById('paso-label');
+      const detallePaso = document.getElementById('detalle-paso');
+      const botonReproducir = document.getElementById('btn-reproducir');
+
+      function limpiarCasillas() {
+        document.querySelectorAll('.tabla td').forEach((celda) => {
+          celda.className = '';
+        });
+      }
+
+      function renderizar() {
+        limpiarCasillas();
+
+        if (pasoActual < 0) {
+          pasoLabel.textContent = `Casilla 0 de ${totalPasos}`;
+          detallePaso.innerHTML = '<p>Presiona siguiente para comenzar.</p>';
+          botonReproducir.textContent = 'Reproducir';
+          return;
+        }
+
+        for (let indice = 0; indice < pasoActual; indice += 1) {
+          const paso = pasos[indice];
+          const celda = document.querySelector(`td[data-fila="${paso.fila}"][data-columna="${paso.columna}"]`);
+          if (!celda) continue;
+          if (paso.se_toma_en_cuenta) {
+            celda.classList.add('pasado-positivo');
+          } else if ({{ opcion }} === 1) {
+            celda.classList.add('pasado-negativo');
+          } else {
+            celda.classList.add('pasado-neutral');
+          }
+        }
+
+        const paso = pasos[pasoActual];
+        const celdaActual = document.querySelector(`td[data-fila="${paso.fila}"][data-columna="${paso.columna}"]`);
+        if (celdaActual) {
+          celdaActual.classList.add('actual');
+        }
+
+        pasoLabel.textContent = `Casilla ${pasoActual + 1} de ${totalPasos}`;
+        detallePaso.innerHTML = `
+          <strong>Fila ${paso.fila}, columna ${paso.columna}</strong>
+          <p>El número es ${paso.numero}.</p>
+          <p>${paso.explicacion}</p>
+          <p class="resumen ${paso.se_toma_en_cuenta ? 'positivo' : ({{ opcion }} === 1 ? 'negativo' : 'suave')}">${paso.resumen}</p>
+          <p><strong>Resultado actual:</strong> ${paso.resultado}</p>
+        `;
+        botonReproducir.textContent = reproduciendo ? 'Pausar' : 'Reproducir';
+      }
+
+      function detener() {
+        reproduciendo = false;
+        if (temporizador) {
+          clearInterval(temporizador);
+          temporizador = null;
+        }
+        renderizar();
+      }
+
+      function siguiente() {
+        if (pasoActual < totalPasos - 1) {
+          pasoActual += 1;
+          renderizar();
+        } else {
+          detener();
+        }
+      }
+
+      function anterior() {
+        if (pasoActual > -1) {
+          pasoActual -= 1;
+          renderizar();
+        }
+      }
+
+      function reiniciar() {
+        pasoActual = -1;
+        detener();
+      }
+
+      function alternarReproduccion() {
+        if (reproduciendo) {
+          detener();
+          return;
+        }
+
+        if (pasoActual < 0) {
+          pasoActual = 0;
+        }
+        reproduciendo = true;
+        renderizar();
+        temporizador = setInterval(siguiente, velocidad);
+      }
+
+      document.getElementById('btn-siguiente').addEventListener('click', () => {
+        if (reproduciendo) {
+          detener();
+        }
+        siguiente();
+      });
+
+      document.getElementById('btn-anterior').addEventListener('click', () => {
+        if (reproduciendo) {
+          detener();
+        }
+        anterior();
+      });
+
+      const codigoTraza = document.getElementById('codigo-traza');
+      const lineasCodigo = {
+        0: [
+          '1. Empieza el recorrido fila por fila',
+          '2. Si fila > 1 y columna < 2:',
+          '3.   sumar el número al resultado',
+          '4. Sino: no se suma',
+        ],
+        1: [
+          '1. Empieza el recorrido fila por fila',
+          '2. Si número < 4:',
+          '3.   sumar 1',
+          '4. Sino si número > 4:',
+          '5.   restar 1',
+          '6. Sino: dejar igual',
+        ],
+        2: [
+          '1. Empieza el recorrido fila por fila',
+          '2. Si número % 3 == 2:',
+          '3.   sumar el número al resultado',
+          '4. Sino: dejar igual',
+        ],
+      };
+
+      function renderizarCodigo() {
+        const option = {{ opcion }};
+        const paso = pasoActual >= 0 ? pasos[pasoActual] : null;
+        const lineas = lineasCodigo[option] || [];
+        codigoTraza.innerHTML = lineas.map((texto, indice) => {
+          const clase = paso ? getLineaActiva(option, paso, indice) : 'inactivo';
+          return `<div class="linea ${clase}">${texto}</div>`;
+        }).join('');
+      }
+
+      function getLineaActiva(option, paso, indice) {
+        if (option === 0) {
+          if (paso.fila > 1 && paso.columna < 2) {
+            return indice === 2 ? 'activa' : 'inactivo';
+          }
+          return indice === 3 ? 'activa' : 'inactivo';
+        }
+        if (option === 1) {
+          if (paso.numero < 4) {
+            return indice === 2 ? 'activa' : 'inactivo';
+          }
+          if (paso.numero > 4) {
+            return indice === 4 ? 'activa' : 'inactivo';
+          }
+          return indice === 5 ? 'activa' : 'inactivo';
+        }
+        if (option === 2) {
+          return (paso.numero % 3 === 2) ? (indice === 2 ? 'activa' : 'inactivo') : (indice === 3 ? 'activa' : 'inactivo');
+        }
+        return 'inactivo';
+      }
+
+      function renderizar() {
+        limpiarCasillas();
+
+        if (pasoActual < 0) {
+          pasoLabel.textContent = `Casilla 0 de ${totalPasos}`;
+          detallePaso.innerHTML = '<p>Presiona siguiente para comenzar.</p>';
+          botonReproducir.textContent = 'Reproducir';
+          renderizarCodigo();
+          return;
+        }
+
+        for (let indice = 0; indice < pasoActual; indice += 1) {
+          const paso = pasos[indice];
+          const celda = document.querySelector(`td[data-fila="${paso.fila}"][data-columna="${paso.columna}"]`);
+          if (!celda) continue;
+          if (paso.se_toma_en_cuenta) {
+            celda.classList.add('pasado-positivo');
+          } else if ({{ opcion }} === 1) {
+            celda.classList.add('pasado-negativo');
+          } else {
+            celda.classList.add('pasado-neutral');
+          }
+        }
+
+        const paso = pasos[pasoActual];
+        const celdaActual = document.querySelector(`td[data-fila="${paso.fila}"][data-columna="${paso.columna}"]`);
+        if (celdaActual) {
+          celdaActual.classList.add('actual');
+        }
+
+        pasoLabel.textContent = `Casilla ${pasoActual + 1} de ${totalPasos}`;
+        detallePaso.innerHTML = `
+          <strong>Fila ${paso.fila}, columna ${paso.columna}</strong>
+          <p>El número es ${paso.numero}.</p>
+          <p>${paso.explicacion}</p>
+          <p class="resumen ${paso.se_toma_en_cuenta ? 'positivo' : ({{ opcion }} === 1 ? 'negativo' : 'suave')}">${paso.resumen}</p>
+          <p><strong>Resultado actual:</strong> ${paso.resultado}</p>
+        `;
+        botonReproducir.textContent = reproduciendo ? 'Pausar' : 'Reproducir';
+        renderizarCodigo();
+      }
+
+      document.getElementById('btn-siguiente').addEventListener('click', () => {
+        if (reproduciendo) {
+          detener();
+        }
+        siguiente();
+      });
+
+      document.getElementById('btn-anterior').addEventListener('click', () => {
+        if (reproduciendo) {
+          detener();
+        }
+        anterior();
+      });
+
+      document.getElementById('btn-reiniciar').addEventListener('click', () => {
+        reiniciar();
+      });
+
+      document.getElementById('btn-reproducir').addEventListener('click', alternarReproduccion);
+      renderizar();
+    </script>
+  </body>
+</html>
